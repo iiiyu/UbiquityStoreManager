@@ -1,3 +1,6 @@
+[![Gittip](http://img.shields.io/gittip/lhunath.png)](https://www.gittip.com/lhunath/)
+[![Travis CI](http://img.shields.io/travis-ci/lhunath/UbiquityStoreManager.png)](https://travis-ci.org/lhunath/UbiquityStoreManager)
+
 # About
 
 `UbiquityStoreManager` is a controller that implements **iCloud integration with Core Data** for you, and takes away all the hardship.
@@ -14,9 +17,7 @@ The API has been kept as simple as possible while giving you, the application de
 
 I provide `UbiquityStoreManager` and its example application to you for free and do not take any responsability for what it may do in your application.
 
-Creating `UbiquityStoreManager` has taken me a huge amount of work and few developers have so far been brave enough to try and solve the iCloud for Core Data problem that Apple left us with.  This code is provided to you free of cost, in the hopes that it will be useful to you in its current form or another.  If this solution is useful to you, please consider saying *thanks* or donating to the cause.
-
-<a href='http://www.pledgie.com/campaigns/19629'><img alt='Click here to lend your support to: UbiquityStoreManager and make a donation at www.pledgie.com !' src='http://www.pledgie.com/campaigns/19629.png?skin_name=chrome' border='0' /></a>
+Creating and maintaining `UbiquityStoreManager` takes a huge amount of work.  This code is provided to you free of cost, in the hopes that it will be useful to you in its current form or another.  If this solution is useful to you, send me a thank-you note, or consider donating to the cause.
 
 # Note on iOS 7
 
@@ -37,8 +38,9 @@ To get started with `UbiquityStoreManager`, all you need to do is instantiate it
                           withManagedObjectModel:nil
                                    localStoreURL:nil
                              containerIdentifier:nil
-                          additionalStoreOptions:nil
-                                        delegate:self]
+                              storeConfiguration:nil
+                                    storeOptions:nil
+                                        delegate:self];
 
 The `nil` parameters can all be used to customize `UbiquityStoreManager`'s behavior.  For instance, if you already have a local store, you can pass its URL as the localStoreURL.
 
@@ -72,7 +74,7 @@ That depends on how much you want to get involved with what `UbiquityStoreManage
 
 For instance, you may want to implement visible feedback for while persistence is unavailable (eg. show an overlay with a loading spinner).  You’d bring this spinner up in `ubiquityStoreManager:willLoadStoreIsCloud:` and dismiss it in `ubiquityStoreManager:didLoadStoreForCoordinator:isCloud:`.
 
-It’s probably also a good idea to update your main `moc` whenever ubiquity changes are getting imported into your store from other devices.  To do this, simply provide the manager with your `moc` by returning it from `managedObjectContextForUbiquityChangesInManager:` and optionally register an observer for `UbiquityManagedStoreDidImportChangesNotification`.
+It’s probably also a good idea to update your main `moc` whenever ubiquity changes are getting imported into your store from other devices.  To do this, simply provide the manager with your `moc` by returning it from `-ubiquityStoreManager:managedObjectContextForUbiquityChanges:` and optionally register an observer for `UbiquityManagedStoreDidImportChangesNotification`.
 
 # What if things go wrong?
 
@@ -209,7 +211,7 @@ The `cloudEnabled` setting is stored in `NSUserDefaults` under the key `@"USMClo
 
 Whenever the application becomes active, USM checks whether the iCloud identity has changed.  If a change is detected and iCloud is currently enabled, the store is reloaded allowing the change to take effect.  Similarly, when a change is detected to the active ubiquitous store UUID and iCloud is currently enabled, the store is also reloaded.
 
-When ubiquitous changes are detected in the cloud store, your application's delegate can specify a custom MOC to use for importing these changes, so that it can become aware of the changes immediately.  To do this, the application should return its MOC via `managedObjectContextForUbiquityChangesInManager:`.  If ubiquitous changes fail to import, the store is reloaded to retry the process and verify whether any corruption has occurred.  Upon successful completion,
+When ubiquitous changes are detected in the cloud store, your application's delegate can specify a custom MOC to use for importing these changes, so that it can become aware of the changes immediately.  To do this, the application should return its MOC via `-ubiquityStoreManager:managedObjectContextForUbiquityChanges:`.  If ubiquitous changes fail to import, the store is reloaded to retry the process and verify whether any corruption has occurred.  Upon successful completion,
 the `UbiquityManagedStoreDidImportChangesNotification` notification is posted.
 
 The cloud store is marked as "corrupted" when it fails to load or when cloud transaction logs fail to import.  To detect the failure of transaction log import attempts made by Apple's Core Data, USM swizzles `NSError`'s init method.  This way, it can detect when an `NSError` is created for transaction log import failures and act accordingly.
