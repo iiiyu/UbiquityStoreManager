@@ -233,12 +233,12 @@ __attribute__((deprecated));
  *      NOTE: The existing local store will be lost.
  *      NOTE: The cloud data known by this device will become available again.
  *      NOTE: The cloud store is still in a corrupt state.  The user can either re-try later, or you can rebuild the cloud store from
-  *           the local store ([manager deleteCloudStoreLocalOnly:NO]).
+ *           the local store ([manager deleteCloudStoreLocalOnly:NO]).
  * - Rebuild the cloud content by seeding it with the cloud store of this device ([manager rebuildCloudContentFromCloudStoreOrLocalStore:YES]).
  *      NOTE: iCloud functionality will be completely restored with the cloud data known by this device.
  *      NOTE: Any cloud changes on other devices that failed to sync to this device will be lost.
  *      NOTE: If you specify YES for allowRebuildFromLocalStore and the cloud store on this device is unusable for repairing the cloud
-  *           content, a new cloud store will be created from the local store instead.
+ *           content, a new cloud store will be created from the local store instead.
  *
  * Keep in mind that if storeHealthy is YES, the cloud store will, if enabled, still be loaded.  If storeHealthy is NO, the cloud store
  * will, if enabled, have been unloaded before this method is called and no store will be available at this point.
@@ -328,6 +328,9 @@ __attribute__((deprecated));
         manuallyMigrateStore:(NSURL *)oldStoreURL withOptions:(NSDictionary *)oldStoreOptions
                      toStore:(NSURL *)newStoreURL withOptions:(NSDictionary *)newStoreOptions error:(NSError **)error;
 
+@optional
+- (void)ubiquityStoreManager:(UbiquityStoreManager *)manager didChangeUbiquityIdentityToken:(id<NSObject, NSCopying, NSCoding>)token;
+
 @end
 
 @interface UbiquityStoreManager : NSObject
@@ -365,7 +368,7 @@ __attribute__((deprecated));
  * Indicates whether iCloud is available for the current user.
  *
  * If iCloud is not available, the user probably hasn't yet configured their Apple ID on their account.
- * 
+ *
  * This property is Key-Value Observing compatible: observing this key will give you updates on the current user's iCloud availability.
  */
 @property(nonatomic, readonly) BOOL cloudAvailable;
@@ -398,6 +401,20 @@ __attribute__((deprecated));
  */
 - (id)initStoreNamed:(NSString *)contentName withManagedObjectModel:(NSManagedObjectModel *)model localStoreURL:(NSURL *)localStoreURL
  containerIdentifier:(NSString *)containerIdentifier storeConfiguration:(NSString *)storeConfiguration storeOptions:(NSDictionary *)storeOptions
+            delegate:(id<UbiquityStoreManagerDelegate>)delegate;
+/** Start managing an optionally ubiquitous store coordinator.
+ *  @param contentName The name of the local and cloud stores that this manager will create.  If nil, "UbiquityStore" will be used.
+ *  @param model The managed object model the store should use.  If nil, all the main bundle's models will be merged.
+ *  @param localStoreURL The location where the non-ubiquitous (local) store should be kept. If nil, the local store will be put in the application support directory.
+ *  @param containerIdentifier The identifier of the ubiquity container to use for the ubiquitous store. If nil, the entitlement's primary container identifier will be used.
+ *  @param storeConfiguration The persistence model's configuration to load the store with.  If nil, the default configuration is used.
+ *  @param storeOptions Additional persistence options that the stores should be initialized with.  If nil or empty, no options will be added to those necessary to load the store.
+ *  @param token The UbiquityIdentityToken
+ *  @param delegate The application controller that will be handling the application's persistence responsibilities.
+ */
+- (id)initStoreNamed:(NSString *)contentName withManagedObjectModel:(NSManagedObjectModel *)model localStoreURL:(NSURL *)localStoreURL
+ containerIdentifier:(NSString *)containerIdentifier storeConfiguration:(NSString *)storeConfiguration
+        storeOptions:(NSDictionary *)storeOptions ubiquityIdentityToken:(id<NSObject, NSCopying, NSCoding>)token
             delegate:(id<UbiquityStoreManagerDelegate>)delegate;
 
 #pragma mark - Maintenance
