@@ -43,7 +43,7 @@ NSString *const USMCloudEnabledKey = @"USMCloudEnabledKey";
 NSString *const USMCloudVersionKey = @"USMCloudVersionKey";
 NSString *const USMCloudCurrentKey = @"USMCloudCurrentKey";
 NSString *const USMCloudUUIDKey = @"USMCloudUUIDKey";
-NSString *const USMUbiquityIdentityTokenKey = @"USMUbiquityIdentityTokenKey";
+NSString *const USMCloudSqliteUUIDKey = @"USMCloudSqliteUUIDKey";
 
 NSString *const USMCloudContentName = @"UbiquityStore";
 NSString *const USMCloudStoreDirectory = @"CloudStore";
@@ -781,6 +781,12 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     UbiquityStoreErrorCause cause = UbiquityStoreErrorCauseNoError;
     @try {
         NSURL *cloudStoreURL = [self URLForCloudStore];
+        // hack: save cloud store sqlite path
+        NSString *sqliteUUID = [[NSUserDefaults standardUserDefaults] stringForKey:USMCloudSqliteUUIDKey];
+        if (![sqliteUUID isEqualToString:self.storeUUID]) {
+            [[NSUserDefaults standardUserDefaults] setObject:self.storeUUID forKey:USMCloudSqliteUUIDKey];
+        }
+        
         [self log:@"Loading cloud store: %@, v%d (%@).", [self storeUUIDForLog], [self cloudVersionForStoreURL:cloudStoreURL],
          _tentativeStoreUUID? @"tentative": @"definite"];
         
@@ -1537,6 +1543,8 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     [self log:@"Will overwrite the local store with the cloud store (using cloud logs)."];
     self.migrationStoreURL = [self URLForCloudStore];
     [self deleteLocalStore];
+    // hack:
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:USMCloudSqliteUUIDKey];
     
     BOOL cloudWasEnabled = self.cloudEnabled;
     if (![self tryLoadLocalStore]) {

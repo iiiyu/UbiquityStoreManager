@@ -83,6 +83,10 @@ extern NSString *const USMCloudVersionKey;
  * The boolean value in the cloud enumeration options dictionary specifies whether it is the currently active store in USM.
  */
 extern NSString *const USMCloudCurrentKey;
+/**
+ * The string is current cloud use sqlite path in USM.
+ */
+extern NSString *const USMCloudSqliteUUIDKey;
 
 typedef enum {
     UbiquityStoreErrorCauseNoError = noErr, // Nothing went wrong.  There is no context.
