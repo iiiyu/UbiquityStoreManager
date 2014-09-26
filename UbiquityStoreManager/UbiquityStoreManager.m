@@ -2170,7 +2170,7 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
  * 3. StoreUUID changed (eg. switched to a new cloud store on another device).
  */
 - (void)cloudStoreChanged:(NSNotification *)note {
-    if (![self ensureQueued:^{ [self cloudStoreChanged:nil]; }])
+    if (![self ensureQueued:^{ [self cloudStoreChanged:note]; }])
         return;
     //    // Update the identity token in case it changed.
     id newIdentityToken = [[NSFileManager defaultManager] ubiquityIdentityToken];
