@@ -43,7 +43,7 @@ NSString *const USMCloudEnabledKey = @"USMCloudEnabledKey";
 NSString *const USMCloudVersionKey = @"USMCloudVersionKey";
 NSString *const USMCloudCurrentKey = @"USMCloudCurrentKey";
 NSString *const USMCloudUUIDKey = @"USMCloudUUIDKey";
-NSString *const USMCloudSqliteUUIDKey = @"USMCloudSqliteUUIDKey";
+NSString *const USMCloudActiveCloudStoreUUIDKey = @"USMCloudActiveCloudStoreUUIDKey";
 
 NSString *const USMCloudContentName = @"UbiquityStore";
 NSString *const USMCloudStoreDirectory = @"CloudStore";
@@ -186,9 +186,9 @@ typedef NS_ENUM(NSUInteger, USMEnabledStore) {
 
 - (id)initStoreNamed:(NSString *)contentName withManagedObjectModel:(NSManagedObjectModel *)model localStoreURL:(NSURL *)localStoreURL
  containerIdentifier:(NSString *)containerIdentifier storeConfiguration:(NSString *)storeConfiguration
-        storeOptions:(NSDictionary *)storeOptions ubiquityIdentityToken:(id<NSObject, NSCopying, NSCoding>)token
-            delegate:(id<UbiquityStoreManagerDelegate>)delegate
-{
+        storeOptions:(NSDictionary *)storeOptions
+            delegate:(id<UbiquityStoreManagerDelegate>)delegate {
+    
     if (!(self = [super init]))
         return nil;
     
@@ -206,8 +206,8 @@ typedef NS_ENUM(NSUInteger, USMEnabledStore) {
     _storeOptions = storeOptions == nil? @{ }: storeOptions;
     
     // Private vars.
-    _currentIdentityToken = token ?: ([[NSFileManager defaultManager] respondsToSelector:@selector(ubiquityIdentityToken)]?
-                                      [[NSFileManager defaultManager] ubiquityIdentityToken]: nil);
+    _currentIdentityToken = [[NSFileManager defaultManager] respondsToSelector:@selector(ubiquityIdentityToken)]?
+    [[NSFileManager defaultManager] ubiquityIdentityToken]: nil;
     _migrationStrategy = &NSPersistentStoreUbiquitousContainerIdentifierKey?
 UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     _persistentStorageQueue = [NSOperationQueue new];
@@ -219,15 +219,8 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
                                                  name:UbiquityManagedStoreDidDetectCorruptionNotification
                                                object:nil];
 #if TARGET_OS_IPHONE
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidBecomeActive:)
-                                                 name:UIApplicationDidBecomeActiveNotification
-                                               object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(userDefaultsDidChange:)
                                                  name:NSUserDefaultsDidChangeNotification
-                                               object:nil];
-#else
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidBecomeActive:)
-                                                 name:NSApplicationDidBecomeActiveNotification
                                                object:nil];
 #endif
     if (&NSUbiquityIdentityDidChangeNotification)
@@ -238,14 +231,6 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     [self reloadStore];
     
     return self;
-}
-
-- (id)initStoreNamed:(NSString *)contentName withManagedObjectModel:(NSManagedObjectModel *)model localStoreURL:(NSURL *)localStoreURL
- containerIdentifier:(NSString *)containerIdentifier storeConfiguration:(NSString *)storeConfiguration
-        storeOptions:(NSDictionary *)storeOptions
-            delegate:(id<UbiquityStoreManagerDelegate>)delegate {
-    return [self initStoreNamed:contentName withManagedObjectModel:model localStoreURL:localStoreURL containerIdentifier:containerIdentifier storeConfiguration:storeConfiguration storeOptions:storeOptions ubiquityIdentityToken:nil delegate:delegate];
-    
 }
 
 - (void)dealloc {
@@ -781,12 +766,6 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     UbiquityStoreErrorCause cause = UbiquityStoreErrorCauseNoError;
     @try {
         NSURL *cloudStoreURL = [self URLForCloudStore];
-        // hack: save cloud store sqlite path
-        NSString *sqliteUUID = [[NSUserDefaults standardUserDefaults] stringForKey:USMCloudSqliteUUIDKey];
-        if (![sqliteUUID isEqualToString:self.storeUUID]) {
-            [[NSUserDefaults standardUserDefaults] setObject:self.storeUUID forKey:USMCloudSqliteUUIDKey];
-        }
-        
         [self log:@"Loading cloud store: %@, v%d (%@).", [self storeUUIDForLog], [self cloudVersionForStoreURL:cloudStoreURL],
          _tentativeStoreUUID? @"tentative": @"definite"];
         
@@ -1543,8 +1522,6 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     [self log:@"Will overwrite the local store with the cloud store (using cloud logs)."];
     self.migrationStoreURL = [self URLForCloudStore];
     [self deleteLocalStore];
-    // hack:
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:USMCloudSqliteUUIDKey];
     
     BOOL cloudWasEnabled = self.cloudEnabled;
     if (![self tryLoadLocalStore]) {
@@ -1945,11 +1922,6 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     if (![self ensureQueued:^{ [self storeUUIDDidChange]; }])
         return;
     
-    // Read the new store UUID and check whether it's actually changed.
-    [self updateStoreUUIDAsynchronously:NO];
-    if ([self.activeCloudStoreUUID isEqualToString:self.storeUUID])
-        return;
-    
     // The UUID of the active store changed.  We need to switch to the newly activated store.
     [self log:@"StoreUUID changed %@ -> %@", self.activeCloudStoreUUID, [self storeUUIDForLog]];
     [self unsetTentativeStoreUUID];
@@ -2170,22 +2142,22 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
  * 3. StoreUUID changed (eg. switched to a new cloud store on another device).
  */
 - (void)cloudStoreChanged:(NSNotification *)note {
-    if (![self ensureQueued:^{ [self cloudStoreChanged:note]; }])
-        return;
-    //    // Update the identity token in case it changed.
+    
+    // Update the identity token in case it changed.
     id newIdentityToken = [[NSFileManager defaultManager] ubiquityIdentityToken];
     if (![self.currentIdentityToken isEqual:newIdentityToken] || (self.currentIdentityToken == nil && newIdentityToken)) {
         [self log:@"Identity token changed: %@ -> %@", self.currentIdentityToken, newIdentityToken];
         self.currentIdentityToken = newIdentityToken;
     }
     
-    self.cloudEnabled = NO;
-    
-    if ([self.delegate respondsToSelector:@selector(ubiquityStoreManager:didChangeUbiquityIdentityToken:)]) {
-        [self.delegate ubiquityStoreManager:self didChangeUbiquityIdentityToken:self.currentIdentityToken];
+    if (self.cloudEnabled) {
+        if ([self.delegate respondsToSelector:@selector(ubiquityStoreManagerHandleCloudStoreChanged:)]) {
+            [self.delegate ubiquityStoreManagerHandleCloudStoreChanged:self];
+        } else {
+            // If the cloud store was active, reload it.
+            [self reloadStore];
+        }
     }
-    
-    [self reloadStore];
 }
 
 - (void)didImportChanges:(NSNotification *)note {

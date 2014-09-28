@@ -83,10 +83,6 @@ extern NSString *const USMCloudVersionKey;
  * The boolean value in the cloud enumeration options dictionary specifies whether it is the currently active store in USM.
  */
 extern NSString *const USMCloudCurrentKey;
-/**
- * The string is current cloud use sqlite path in USM.
- */
-extern NSString *const USMCloudSqliteUUIDKey;
 
 typedef enum {
     UbiquityStoreErrorCauseNoError = noErr, // Nothing went wrong.  There is no context.
@@ -262,6 +258,9 @@ __attribute__((deprecated));
 @optional
 - (BOOL)ubiquityStoreManagerHandleCloudDisabled:(UbiquityStoreManager *)manager;
 
+@optional
+- (void)ubiquityStoreManagerHandleCloudStoreChanged:(UbiquityStoreManager *)manager;
+
 /** Triggered when the cloud content is deleted while cloud is enabled.
  *
  * When the cloud store is deleted, it may be that the user has deleted his cloud data for the app from one of his devices.
@@ -331,9 +330,6 @@ __attribute__((deprecated));
 - (BOOL)ubiquityStoreManager:(UbiquityStoreManager *)manager
         manuallyMigrateStore:(NSURL *)oldStoreURL withOptions:(NSDictionary *)oldStoreOptions
                      toStore:(NSURL *)newStoreURL withOptions:(NSDictionary *)newStoreOptions error:(NSError **)error;
-
-@optional
-- (void)ubiquityStoreManager:(UbiquityStoreManager *)manager didChangeUbiquityIdentityToken:(id<NSObject, NSCopying, NSCoding>)token;
 
 @end
 
@@ -405,20 +401,6 @@ __attribute__((deprecated));
  */
 - (id)initStoreNamed:(NSString *)contentName withManagedObjectModel:(NSManagedObjectModel *)model localStoreURL:(NSURL *)localStoreURL
  containerIdentifier:(NSString *)containerIdentifier storeConfiguration:(NSString *)storeConfiguration storeOptions:(NSDictionary *)storeOptions
-            delegate:(id<UbiquityStoreManagerDelegate>)delegate;
-/** Start managing an optionally ubiquitous store coordinator.
- *  @param contentName The name of the local and cloud stores that this manager will create.  If nil, "UbiquityStore" will be used.
- *  @param model The managed object model the store should use.  If nil, all the main bundle's models will be merged.
- *  @param localStoreURL The location where the non-ubiquitous (local) store should be kept. If nil, the local store will be put in the application support directory.
- *  @param containerIdentifier The identifier of the ubiquity container to use for the ubiquitous store. If nil, the entitlement's primary container identifier will be used.
- *  @param storeConfiguration The persistence model's configuration to load the store with.  If nil, the default configuration is used.
- *  @param storeOptions Additional persistence options that the stores should be initialized with.  If nil or empty, no options will be added to those necessary to load the store.
- *  @param token The UbiquityIdentityToken
- *  @param delegate The application controller that will be handling the application's persistence responsibilities.
- */
-- (id)initStoreNamed:(NSString *)contentName withManagedObjectModel:(NSManagedObjectModel *)model localStoreURL:(NSURL *)localStoreURL
- containerIdentifier:(NSString *)containerIdentifier storeConfiguration:(NSString *)storeConfiguration
-        storeOptions:(NSDictionary *)storeOptions ubiquityIdentityToken:(id<NSObject, NSCopying, NSCoding>)token
             delegate:(id<UbiquityStoreManagerDelegate>)delegate;
 
 #pragma mark - Maintenance
