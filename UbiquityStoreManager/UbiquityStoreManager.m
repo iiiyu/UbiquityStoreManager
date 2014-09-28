@@ -1922,10 +1922,19 @@ UbiquityStoreMigrationStrategyIOS: UbiquityStoreMigrationStrategyCopyEntities;
     if (![self ensureQueued:^{ [self storeUUIDDidChange]; }])
         return;
     
+    // Read the new store UUID and check whether it's actually changed.
+    [self updateStoreUUIDAsynchronously:NO];
+    if ([self.activeCloudStoreUUID isEqualToString:self.storeUUID])
+        return;
+    
     // The UUID of the active store changed.  We need to switch to the newly activated store.
     [self log:@"StoreUUID changed %@ -> %@", self.activeCloudStoreUUID, [self storeUUIDForLog]];
     [self unsetTentativeStoreUUID];
-    [self cloudStoreChanged:nil];
+    
+    if (self.cloudEnabled) {
+        // If the cloud store was active, reload it.
+        [self reloadStore];
+    }
 }
 
 // Cloud content corruption was detected or cleared.
